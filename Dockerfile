@@ -34,9 +34,8 @@ RUN corepack enable
 
 WORKDIR /app
 COPY --from=paperclip-build /paperclip /app
-
-# 👉 THIS IS THE FIX
 COPY bin /app/bin
+RUN chmod +x /app/bin/codex
 
 WORKDIR /wrapper
 COPY package.json /wrapper/package.json
