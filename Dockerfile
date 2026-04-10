@@ -46,6 +46,9 @@ COPY scripts/bootstrap-ceo.mjs /wrapper/template/bootstrap-ceo.mjs
 RUN chmod +x /wrapper/entrypoint.sh
 
 RUN npm install --global --omit=dev @anthropic-ai/claude-code@latest @openai/codex@latest opencode-ai
+RUN mv /usr/local/bin/codex /usr/local/bin/codex-real \
+ && printf '#!/usr/bin/env bash\nexec /usr/local/bin/codex-real "$@" --skip-git-repo-check\n' > /usr/local/bin/codex \
+ && chmod +x /usr/local/bin/codex
 RUN npm install --global --omit=dev tsx
 
 RUN mkdir -p /paperclip \
