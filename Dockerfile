@@ -22,7 +22,6 @@ RUN test -f server/dist/index.js
 # Runtime image
 FROM node:22-bookworm
 ENV NODE_ENV=production
-ENV PATH="/app/bin:${PATH}"
 
 RUN apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
@@ -34,8 +33,6 @@ RUN corepack enable
 
 WORKDIR /app
 COPY --from=paperclip-build /paperclip /app
-COPY bin /app/bin
-RUN chmod +x /app/bin/codex
 
 WORKDIR /wrapper
 COPY package.json /wrapper/package.json
@@ -46,10 +43,20 @@ COPY scripts/bootstrap-ceo.mjs /wrapper/template/bootstrap-ceo.mjs
 RUN chmod +x /wrapper/entrypoint.sh
 
 RUN npm install --global --omit=dev @anthropic-ai/claude-code@latest @openai/codex@latest opencode-ai
-RUN mv /usr/local/bin/codex /usr/local/bin/codex-real \
- && printf '#!/usr/bin/env bash\nexec /usr/local/bin/codex-real "$@" --skip-git-repo-check\n' > /usr/local/bin/codex \
- && chmod +x /usr/local/bin/codex
 RUN npm install --global --omit=dev tsx
+
+RUN mv /usr/local/bin/codex /usr/local/bin/codex-real \
+ && printf '%s\n' \
+'#!/usr/bin/env bash' \
+'set -euo pipefail' \
+'for arg in "$@"; do' \
+'  if [ "$arg" = "--skip-git-repo-check" ]; then' \
+'    exec /usr/local/bin/codex-real "$@"' \
+'  fi' \
+'done' \
+'exec /usr/local/bin/codex-real "$@" --skip-git-repo-check' \
+> /usr/local/bin/codex \
+ && chmod +x /usr/local/bin/codex
 
 RUN mkdir -p /paperclip \
     && chown -R node:node /app /paperclip /wrapper
