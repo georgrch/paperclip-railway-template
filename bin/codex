@@ -3,10 +3,6 @@ set -euo pipefail
 
 REAL_CODEX="/usr/local/bin/codex"
 
-if [ ! -x "$REAL_CODEX" ]; then
-  REAL_CODEX="$(command -v codex)"
-fi
-
 if [ "${1:-}" = "exec" ]; then
   shift
   exec "$REAL_CODEX" exec --skip-git-repo-check "$@"
