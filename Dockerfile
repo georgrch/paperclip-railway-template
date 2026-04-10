@@ -19,9 +19,10 @@ RUN pnpm --filter @paperclipai/plugin-sdk build
 RUN pnpm --filter @paperclipai/server build
 RUN test -f server/dist/index.js
 
-# Runtime image (direct Paperclip server, no wrapper).
+# Runtime image
 FROM node:22-bookworm
 ENV NODE_ENV=production
+ENV PATH="/app/bin:${PATH}"
 
 RUN apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
@@ -34,6 +35,9 @@ RUN corepack enable
 WORKDIR /app
 COPY --from=paperclip-build /paperclip /app
 
+# 👉 THIS IS THE FIX
+COPY bin /app/bin
+
 WORKDIR /wrapper
 COPY package.json /wrapper/package.json
 RUN npm install --omit=dev && npm cache clean --force
@@ -42,14 +46,12 @@ COPY scripts/entrypoint.sh /wrapper/entrypoint.sh
 COPY scripts/bootstrap-ceo.mjs /wrapper/template/bootstrap-ceo.mjs
 RUN chmod +x /wrapper/entrypoint.sh
 
-# Optional local adapters/tools parity with upstream Dockerfile.
 RUN npm install --global --omit=dev @anthropic-ai/claude-code@latest @openai/codex@latest opencode-ai
 RUN npm install --global --omit=dev tsx
+
 RUN mkdir -p /paperclip \
     && chown -R node:node /app /paperclip /wrapper
 
-# Railway sets PORT at runtime and this process binds to it.
-# Entrypoint runs as root, fixes /paperclip volume permissions, then execs as node.
 EXPOSE 3100
 ENTRYPOINT ["/wrapper/entrypoint.sh"]
 CMD ["node", "/wrapper/src/server.js"]
